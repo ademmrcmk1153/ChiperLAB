@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CipherLab: Sezar Şifreleme ve Kırma Uygulaması</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Özel font için Inter'ı kullanıyoruz */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Odaklandığında giriş alanlarını vurgulamak için */
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5); /* Tailwind'in blue-500'üne benzer */
+        }
+        /* Aktif sekme butonu stili */
+        .tab-button.active {
+            border-bottom: 3px solid #3B82F6; /* Tailwind blue-500 */
+            color: #3B82F6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md md:max-w-lg lg:max-w-xl">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
+            <!-- Logo buraya eklendi -->
+            <img src="https://i.imgur.com/jmO607R.png" alt="CipherLab Logo" class="w-10 h-10 rounded-full mr-3">
+            CipherLab
+        </h1>
+
+        <!-- Sekme Navigasyonu -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button id="encryptTabBtn" class="tab-button flex-1 py-3 text-center text-gray-600 hover:text-blue-600 transition duration-200 ease-in-out active">
+                Metin Şifrele
+            </button>
+            <button id="crackTabBtn" class="tab-button flex-1 py-3 text-center text-gray-600 hover:text-purple-600 transition duration-200 ease-in-out">
+                Şifre Çöz (Analiz)
+            </button>
+            <button id="createSecretTabBtn" class="tab-button flex-1 py-3 text-center text-gray-600 hover:text-green-600 transition duration-200 ease-in-out">
+                Gizli Mesaj Oluştur
+            </button>
+        </div>
+
+        <!-- Metin Şifrele Sekmesi İçeriği -->
+        <div id="encryptSection" class="tab-content">
+            <div class="mb-4">
+                <label for="encryptInputText" class="block text-gray-700 text-sm font-semibold mb-2">Metin Girin:</label>
+                <textarea id="encryptInputText"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition duration-200 ease-in-out resize-y min-h-[100px]"
+                          placeholder="Şifrelemek istediğiniz metni buraya yazın."></textarea>
+            </div>
+
+            <div class="mb-6">
+                <label for="encryptShiftKey" class="block text-gray-700 text-sm font-semibold mb-2">Kaydırma Anahtarı (0-25):</label>
+                <input type="number" id="encryptShiftKey" min="0" max="25" value="3"
+                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition duration-200 ease-in-out text-center">
+            </div>
+
+            <div class="mb-6">
+                <button id="encryptBtn"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Şifrele
+                </button>
+            </div>
+
+            <div>
+                <label for="encryptOutputText" class="block text-gray-700 text-sm font-semibold mb-2">Şifrelenmiş Metin:</label>
+                <textarea id="encryptOutputText" readonly
+                          class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 resize-y min-h-[100px]"
+                          placeholder="Şifrelenmiş metin burada görünecektir."></textarea>
+            </div>
+        </div>
+
+        <!-- Şifre Çöz (Analiz) Sekmesi İçeriği -->
+        <div id="crackSection" class="tab-content hidden">
+            <div class="mb-4">
+                <label for="crackInputText" class="block text-gray-700 text-sm font-semibold mb-2">Şifreli Metni Girin:</label>
+                <textarea id="crackInputText"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition duration-200 ease-in-out resize-y min-h-[100px]"
+                          placeholder="Deşifre etmek istediğiniz şifreli metni buraya yazın."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label for="languageSelect" class="block text-gray-700 text-sm font-semibold mb-2">Dil Seçin (Frekans Analizi İçin):</label>
+                <select id="languageSelect"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 transition duration-200 ease-in-out">
+                    <option value="english">İngilizce</option>
+                    <option value="turkish">Türkçe</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <button id="crackBtn"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Şifreyi Kır (En Olasıyı Bul)
+                </button>
+            </div>
+
+            <div>
+                <label class="block text-gray-700 text-sm font-semibold mb-2">Olası Deşifreler:</label>
+                <div id="crackResultsContainer"
+                     class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 min-h-[150px] max-h-[400px] overflow-y-auto">
+                    <!-- Deşifre edilmiş metinler buraya eklenecek -->
+                    <p class="text-gray-500">Şifreli metni girin ve 'Şifreyi Kır' butonuna basın.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gizli Mesaj Oluştur Sekmesi İçeriği -->
+        <div id="createSecretSection" class="tab-content hidden">
+            <div class="mb-4">
+                <label for="secretMessageInput" class="block text-gray-700 text-sm font-semibold mb-2">Gizlemek İstediğiniz Mesaj (Gizli Mesaj):</label>
+                <textarea id="secretMessageInput"
+                          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 transition duration-200 ease-in-out resize-y min-h-[100px]"
+                          placeholder="Gizlemek istediğiniz mesajı buraya yazın."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label for="secretLanguageSelect" class="block text-gray-700 text-sm font-semibold mb-2">Yüzey Metninin Dili (Frekans Analizi İçin):</label>
+                <select id="secretLanguageSelect"
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 transition duration-200 ease-in-out">
+                    <option value="english">İngilizce</option>
+                    <option value="turkish">Türkçe</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <button id="createSecretBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Gizli Mesajı Şifrele ve Yüzey Metni Oluştur
+                </button>
+            </div>
+
+            <div>
+                <label for="generatedSurfaceText" class="block text-gray-700 text-sm font-semibold mb-2">Oluşturulan Yüzey Metni (Çift Anlamlı Mesajınız):</label>
+                <textarea id="generatedSurfaceText" readonly
+                          class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 resize-y min-h-[100px]"
+                          placeholder="Gizli mesajınızın şifrelenmiş hali burada görünecektir."></textarea>
+                <p id="secretMessageInfo" class="text-gray-600 text-xs italic mt-2">
+                    <!-- Bilgi mesajı buraya gelecek -->
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // HTML elemanlarını seçiyoruz
+        const encryptTabBtn = document.getElementById('encryptTabBtn');
+        const crackTabBtn = document.getElementById('crackTabBtn');
+        const createSecretTabBtn = document.getElementById('createSecretTabBtn'); // Yeni sekme butonu
+        const encryptSection = document.getElementById('encryptSection');
+        const crackSection = document.getElementById('crackSection');
+        const createSecretSection = document.getElementById('createSecretSection'); // Yeni sekme içeriği
+
+        // Metin Şifrele Sekmesi Elemanları
+        const encryptInputText = document.getElementById('encryptInputText');
+        const encryptShiftKey = document.getElementById('encryptShiftKey');
+        const encryptBtn = document.getElementById('encryptBtn');
+        const encryptOutputText = document.getElementById('encryptOutputText');
+
+        // Şifre Çöz (Analiz) Sekmesi Elemanları
+        const crackInputText = document.getElementById('crackInputText');
+        const languageSelect = document.getElementById('languageSelect');
+        const crackBtn = document.getElementById('crackBtn');
+        const crackResultsContainer = document.getElementById('crackResultsContainer');
+
+        // Gizli Mesaj Oluştur Sekmesi Elemanları
+        const secretMessageInput = document.getElementById('secretMessageInput');
+        const secretLanguageSelect = document.getElementById('secretLanguageSelect'); // Yeni dil seçimi
+        const createSecretBtn = document.getElementById('createSecretBtn');
+        const generatedSurfaceText = document.getElementById('generatedSurfaceText');
+        const secretMessageInfo = document.getElementById('secretMessageInfo'); // Bilgi mesajı alanı
+
+        // Dil bazında harf frekansları (yaklaşık yüzdeler)
+        const languageFrequencies = {
+            english: {
+                'a': 8.167, 'b': 1.492, 'c': 2.782, 'd': 4.253, 'e': 12.702, 'f': 2.228,
+                'g': 2.015, 'h': 6.094, 'i': 6.966, 'j': 0.153, 'k': 0.772, 'l': 4.025,
+                'm': 2.406, 'n': 6.749, 'o': 7.507, 'p': 1.929, 'q': 0.095, 'r': 5.987,
+                's': 6.327, 't': 9.056, 'u': 2.758, 'v': 0.978, 'w': 2.360, 'x': 0.150,
+                'y': 1.974, 'z': 0.074
+            },
+            turkish: {
+                'a': 11.75, 'b': 2.04, 'c': 1.42, 'ç': 1.02, 'd': 3.26, 'e': 8.94,
+                'f': 0.46, 'g': 1.12, 'ğ': 0.90, 'h': 1.21, 'ı': 1.93, 'i': 8.39,
+                'j': 0.03, 'k': 4.64, 'l': 5.76, 'm': 3.75, 'n': 9.18, 'o': 2.97,
+                'ö': 0.86, 'p': 0.88, 'r': 6.84, 's': 2.88, 'ş': 1.25, 't': 3.98,
+                'u': 3.23, 'ü': 0.98, 'v': 0.95, 'y': 2.93, 'z': 1.49
+            }
+        };
+
+        /**
+         * Sezar şifrelemesi veya deşifrelemesi yapar.
+         * @param {string} text - İşlenecek metin.
+         * @param {number} shift - Kaydırma miktarı (pozitif şifreleme, negatif deşifreleme için).
+         * @returns {string} - İşlenmiş metin.
+         */
+        function caesarCipher(text, shift) {
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                let charCode = char.charCodeAt(0);
+
+                // İngilizce alfabesi için
+                if (char >= 'a' && char <= 'z') {
+                    const offset = 'a'.charCodeAt(0);
+                    let shiftedCharCode = ((charCode - offset + shift) % 26);
+                    if (shiftedCharCode < 0) shiftedCharCode += 26;
+                    result += String.fromCharCode(shiftedCharCode + offset);
+                } else if (char >= 'A' && char <= 'Z') {
+                    const offset = 'A'.charCodeAt(0);
+                    let shiftedCharCode = ((charCode - offset + shift) % 26);
+                    if (shiftedCharCode < 0) shiftedCharCode += 26;
+                    result += String.fromCharCode(shiftedCharCode + offset);
+                }
+                // Türkçe özel karakterler veya diğer semboller için, karakteri olduğu gibi bırak
+                else {
+                    result += char;
+                }
+            }
+            return result;
+        }
+
+        /**
+         * Metnin harf frekanslarını hesaplar.
+         * @param {string} text - Frekansları hesaplanacak metin.
+         * @param {string} lang - Kullanılacak dil ('english' veya 'turkish').
+         * @returns {Object} - Her harfin yüzdesel frekansını içeren bir obje.
+         */
+        function calculateFrequencies(text, lang) {
+            const frequencies = {};
+            let totalLetters = 0;
+            const lowerText = text.toLowerCase();
+            const currentExpectedFrequencies = languageFrequencies[lang];
+
+            // Tüm harfleri say
+            for (let i = 0; i < lowerText.length; i++) {
+                const char = lowerText[i];
+                // Sadece seçilen dilin alfabesindeki harfleri say
+                if (currentExpectedFrequencies.hasOwnProperty(char)) {
+                    frequencies[char] = (frequencies[char] || 0) + 1;
+                    totalLetters++;
+                }
+            }
+
+            // Yüzdesel frekanslara dönüştür
+            for (const char in currentExpectedFrequencies) {
+                frequencies[char] = ((frequencies[char] || 0) / totalLetters) * 100;
+                if (isNaN(frequencies[char])) { // Eğer metinde hiç harf yoksa NaN olabilir
+                    frequencies[char] = 0;
+                }
+            }
+            return frequencies;
+        }
+
+        /**
+         * İki frekans dağılımı arasındaki farkı (skoru) hesaplar (Chi-kare benzeri).
+         * Düşük skor, daha iyi bir eşleşme anlamına gelir.
+         * @param {Object} observedFrequencies - Gözlemlenen metnin frekansları.
+         * @param {Object} expectedFrequencies - Beklenen frekanslar.
+         * @returns {number} - Skoru.
+         */
+        function calculateScore(observedFrequencies, expectedFrequencies) {
+            let score = 0;
+            for (const char in expectedFrequencies) {
+                const observed = observedFrequencies[char] || 0; // Eğer harf yoksa 0 al
+                const expected = expectedFrequencies[char];
+                // Kareli farkların toplamını kullanıyoruz
+                score += Math.pow(observed - expected, 2);
+            }
+            return score;
+        }
+
+        /**
+         * Sekmeleri yönetir, hangi içeriğin gösterileceğini belirler.
+         * @param {string} activeSectionId - Gösterilecek sekmenin ID'si.
+         */
+        function showSection(activeSectionId) {
+            // Tüm sekme içeriklerini gizle
+            encryptSection.classList.add('hidden');
+            crackSection.classList.add('hidden');
+            createSecretSection.classList.add('hidden'); // Yeni sekme içeriğini de gizle
+
+            // Tüm sekme butonlarından 'active' sınıfını kaldır
+            encryptTabBtn.classList.remove('active');
+            crackTabBtn.classList.remove('active');
+            createSecretTabBtn.classList.remove('active'); // Yeni sekme butonundan da kaldır
+
+            // İstenen sekme içeriğini göster
+            document.getElementById(activeSectionId).classList.remove('hidden');
+
+            // İlgili sekme butonuna 'active' sınıfını ekle
+            if (activeSectionId === 'encryptSection') {
+                encryptTabBtn.classList.add('active');
+            } else if (activeSectionId === 'crackSection') {
+                crackTabBtn.classList.add('active');
+            } else if (activeSectionId === 'createSecretSection') { // Yeni sekme için
+                createSecretTabBtn.classList.add('active');
+            }
+        }
+
+        // Sekme butonlarına olay dinleyicileri ekliyoruz
+        encryptTabBtn.addEventListener('click', () => showSection('encryptSection'));
+        crackTabBtn.addEventListener('click', () => showSection('crackSection'));
+        createSecretTabBtn.addEventListener('click', () => showSection('createSecretSection')); // Yeni sekme olay dinleyicisi
+
+        // Metin Şifrele butonuna tıklama olayını ekliyoruz
+        encryptBtn.addEventListener('click', () => {
+            const text = encryptInputText.value;
+            const shift = parseInt(encryptShiftKey.value);
+
+            if (isNaN(shift) || shift < 0 || shift > 25) {
+                encryptOutputText.value = "Hata: Kaydırma anahtarı 0 ile 25 arasında bir sayı olmalıdır.";
+                return;
+            }
+            
+            encryptOutputText.value = caesarCipher(text, shift);
+        });
+
+        // Şifre Çöz (Analiz) butonuna tıklama olayını ekliyoruz
+        crackBtn.addEventListener('click', () => {
+            const encryptedText = crackInputText.value;
+            const selectedLanguage = languageSelect.value;
+            const expectedFrequencies = languageFrequencies[selectedLanguage];
+
+            crackResultsContainer.innerHTML = '';
+
+            if (encryptedText.trim() === "") {
+                crackResultsContainer.innerHTML = '<p class="text-red-500">Lütfen deşifre etmek için bir metin girin.</p>';
+                return;
+            }
+
+            let bestScore = Infinity;
+            let mostProbableText = '';
+            let mostProbableShift = -1;
+            const allDecryptions = [];
+
+            for (let shift = 0; shift <= 25; shift++) {
+                const decryptedText = caesarCipher(encryptedText, -shift);
+                const observedFrequencies = calculateFrequencies(decryptedText, selectedLanguage);
+                const currentScore = calculateScore(observedFrequencies, expectedFrequencies);
+
+                allDecryptions.push({
+                    text: decryptedText,
+                    shift: shift,
+                    score: currentScore
+                });
+
+                if (currentScore < bestScore) {
+                    bestScore = currentScore;
+                    mostProbableText = decryptedText;
+                    mostProbableShift = shift;
+                }
+            }
+
+            if (mostProbableShift === -1 || !/[a-z]/i.test(encryptedText)) {
+                crackResultsContainer.innerHTML = '<p class="text-red-500">Girilen metinde harf bulunamadı veya deşifre edilemedi. Frekans analizi yapılamadı.</p>';
+                return;
+            }
+
+            const bestResultDiv = document.createElement('div');
+            bestResultDiv.className = "mb-4 p-3 rounded-lg bg-blue-100 border-2 border-blue-500 shadow-md";
+            bestResultDiv.innerHTML = `
+                <p class="text-lg font-bold text-blue-800 mb-2">En Olası Deşifre (Kaydırma ${mostProbableShift}, ${selectedLanguage === 'english' ? 'İngilizce' : 'Türkçe'} Analizi):</p>
+                <p class="text-gray-900 text-base">${mostProbableText}</p>
+                <p class="text-sm text-gray-600 mt-2">Skor: ${bestScore.toFixed(2)} (Düşük skor daha iyi eşleşme demektir)</p>
+            `;
+            crackResultsContainer.appendChild(bestResultDiv);
+
+            const otherResultsHeader = document.createElement('p');
+            otherResultsHeader.className = "text-gray-700 text-sm font-semibold mt-4 mb-2";
+            otherResultsHeader.textContent = "Diğer Olası Deşifreler:";
+            crackResultsContainer.appendChild(otherResultsHeader);
+
+            const explanationNote = document.createElement('p');
+            explanationNote.className = "text-gray-600 text-xs italic mb-4";
+            explanationNote.innerHTML = `
+                <strong class="font-bold">Not:</strong> Frekans analizi, metindeki harf dağılımlarını standart dil frekanslarıyla karşılaştırarak en olası sonucu bulur. Özellikle kısa metinlerde veya standart dil yapısına uymayan metinlerde, bu analiz her zaman "mantıklı" görünen bir sonuç vermeyebilir. Lütfen listedeki diğer seçenekleri de gözden geçirin.
+            `;
+            crackResultsContainer.appendChild(explanationNote);
+
+            allDecryptions.sort((a, b) => a.score - b.score);
+
+            allDecryptions.forEach(item => {
+                if (item.shift === mostProbableShift && item.text === mostProbableText && item.score === bestScore) {
+                    return;
+                }
+                const resultParagraph = document.createElement('p');
+                resultParagraph.className = "mb-1 p-1 rounded-md bg-gray-100 text-sm";
+                resultParagraph.innerHTML = `<span class="font-semibold text-gray-700">Kaydırma ${item.shift}:</span> ${item.text} <span class="text-gray-500">(Skor: ${item.score.toFixed(2)})</span>`;
+                crackResultsContainer.appendChild(resultParagraph);
+            });
+        });
+
+        // Gizli Mesaj Oluştur butonuna tıklama olayını ekliyoruz
+        createSecretBtn.addEventListener('click', () => {
+            const secretText = secretMessageInput.value;
+            const selectedLanguage = secretLanguageSelect.value;
+            const expectedFrequencies = languageFrequencies[selectedLanguage];
+
+            if (secretText.trim() === "") {
+                generatedSurfaceText.value = "Hata: Lütfen gizlemek istediğiniz mesajı girin.";
+                secretMessageInfo.innerHTML = '';
+                return;
+            }
+
+            let bestScore = Infinity;
+            let bestSurfaceText = '';
+            let bestShift = -1;
+
+            // Tüm olası 26 kaydırma anahtarını deniyoruz
+            for (let shift = 0; shift <= 25; shift++) {
+                const currentSurfaceText = caesarCipher(secretText, shift);
+                const observedFrequencies = calculateFrequencies(currentSurfaceText, selectedLanguage);
+                const currentScore = calculateScore(observedFrequencies, expectedFrequencies);
+
+                if (currentScore < bestScore) {
+                    bestScore = currentScore;
+                    bestSurfaceText = currentSurfaceText;
+                    bestShift = shift;
+                }
+            }
+
+            if (bestShift === -1 || !/[a-z]/i.test(secretText)) {
+                generatedSurfaceText.value = "Gizli mesajda harf bulunamadı veya yüzey metni oluşturulamadı.";
+                secretMessageInfo.innerHTML = '';
+                return;
+            }
+
+            generatedSurfaceText.value = bestSurfaceText;
+            secretMessageInfo.innerHTML = `
+                Bu 'Yüzey Metni' (Kaydırma ${bestShift}, ${selectedLanguage === 'english' ? 'İngilizce' : 'Türkçe'} Analizi) frekans analiziyle en doğal görünen hali seçilerek oluşturuldu.
+                Gizli mesajınızı ortaya çıkarmak için bu metni **Kaydırma ${bestShift}** ile deşifre etmeniz gerekir.
+                <strong class="font-bold">Not:</strong> Yüzey metninin "mantıklı" görünmesi için yapılan bu optimizasyon, gizli mesajınızın deşifre edildiğinde her zaman "mantıklı" görünmesini garanti etmez.
+            `;
+        });
+
+        // Sayfa yüklendiğinde varsayılan olarak Metin Şifrele sekmesini göster
+        showSection('encryptSection');
+    </script>
+</body>
+</html>
